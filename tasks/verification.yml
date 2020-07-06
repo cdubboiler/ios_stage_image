@@ -1,0 +1,23 @@
+- block:
+  - name: Calculate MD5 sum for the system image
+    ios_command:
+      commands:
+        - verify /md5 {{ system_image_filename }}
+    register: checksum_results
+    vars:
+      ansible_command_timeout: 500
+
+  - set_fact:
+      device_image_checksum: "{{ (checksum_results.stdout[0]|regex_search(' ([A-z0-9]+)$','\\1'))[0] }}"
+
+  - set_fact:
+      stage_system_image: "{{ device_image_checksum != network_image_map[device_image_id][device_platform].system_image_checksum }}"
+
+  - name: Deleting image {{ system_image_filename }} with bad checksum
+    ios_command:
+      commands:
+        - command: "delete {{ system_image_filename }}"
+          prompt: 'Delete'
+          answer: "\r\r"
+    when: stage_system_image
+  when: system_image_filename in device_file_list

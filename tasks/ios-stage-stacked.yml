@@ -1,0 +1,33 @@
+---
+- block:
+  - name: REPLACE METHOD - STACKED - GET STACKED ITEMS
+    set_fact:
+      stack_items: "{{ device_stack | difference( device_file_system ) }}"
+
+  - name: REPLACE METHOD - STACKED - GET FILES
+    ios_command:
+      commands:
+        - dir "{{ stack_items[0] }}"
+    register: dir_stack_output
+    when: stack_items[0] is defined
+
+  - name: Parse the command output
+    set_fact:
+      dir_stack: "{{ dir_stack_output.stdout[0] | parse_cli_textfsm(dir_template) }}"
+
+  - name: REPLACE METHOD - STACKED - SET VARIABLES
+    set_fact:
+      stack: "{{ dir_stack | map(attribute='NAME') | list }}"
+
+  - name: Staging file to other switches
+    ios_command:
+      commands:
+        - command: "copy {{ device_file_system }}{{ system_image_filename }} {{ directory }}{{ system_image_filename }}"
+    loop: "{{ stack_items }}"
+    loop_control:
+      loop_var: directory
+    vars:
+        ansible_command_timeout: 55000
+  when:
+    - stage_system_image
+    - device_switch_nums|length > 1

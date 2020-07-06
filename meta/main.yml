@@ -1,0 +1,9 @@
+---
+
+galaxy_info:
+  author: Colin Wagner
+  description: Ansible Role to stage file
+  company: Chevron
+  role_name: ios_stage_image
+
+dependencies:[]

@@ -1,0 +1,48 @@
+---
+- include_role:
+    name: ios_facts
+
+- block:
+    - debug:
+        msg: "Device mode is {{ device_mode }}"
+
+    - debug:
+        msg: "Device mode is {{ device_mode }}, this device needs conversion"
+      when: device_mode == 'BUNDLE'
+
+    - debug:
+        msg: "Device mode is {{ device_mode }}, this device does not need conversion"
+      when: device_mode == 'INSTALL'
+
+  when: device_mode != 'None'
+
+- debug:
+    msg: "Device platform {{ device_platform }}, Device Software ID {{ device_image_id }}, model {{ device_model }}, version {{ device_version }}, {{ device_storage_free }}/{{ device_storage_total }} bytes available"
+
+- git:
+    repo: {{ variable_repo }}
+    dest: /tmp/vars/
+  run_once: true
+
+- name: Set the image var file
+  include_vars: "/tmp/vars/{{ ansible_network_os }}.yml"
+
+- name: Verify device model in network_version_map
+  assert:
+    that:
+      - "network_image_map[device_image_id][device_platform].version is defined"
+      - "network_image_map[device_image_id][device_platform].system_image_url is defined"
+    msg: "{{ device_image_id }} is not in network_image_map"
+
+- name: Setting the required version
+  set_fact:
+    device_required_version: "{{ network_image_map[device_image_id][device_platform].version }}"
+    device_required_software: "{{ network_image_map[device_image_id][device_platform] }}"
+
+- block:
+  - debug:
+      msg: "Device {{ inventory_hostname }} requires installation of {{ device_required_version }} [current: {{ device_version }}]"
+
+  - set_fact:
+      device_requires_install: true
+  when: device_version != device_required_version
